@@ -47,7 +47,9 @@ table(loan_data_paidORdefault$loan_status, loan_data_paidORdefault$status_bin)
 vars_interested <- c("loan_status", "term", "sub_grade", "emp_length", "home_ownership",
                      "addr_state", "application_type", "purpose", "loan_amnt", "installment",
                      "annual_inc", "revol_bal", "revol_util", "total_acc", "dti", "delinq_2yrs",
-                     "bankruptcy_bin", "taxliens_bin", "status_bin", "emp_length_num", "sub_grade_num")
+                     "bankruptcy_bin", "taxliens_bin", "status_bin", "emp_length_num", "sub_grade_num",
+                     "total_bc_limit", "total_bal_ex_mort", "num_accts_ever_120_pd",
+                     "bc_util", "chargeoff_within_12_mths", "inq_last_12m", "tot_cur_bal","pub_rec")
 loan_data_vars_interested <- loan_data_paidORdefault %>% select(one_of(vars_interested))
 
 
