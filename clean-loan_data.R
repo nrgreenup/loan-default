@@ -1,4 +1,4 @@
-### FILE DESCRIPTION: Clean loan repayment data.
+### FILE DESCRIPTION: Clean loan repayment data and perform exploratory analyses.
 
 ### Data source: LendingClub public release data for year 2015. Accessed from https://www.lendingclub.com/info/download-data.action on 2018/04/09.
 
@@ -42,6 +42,9 @@ loan_data_paidORdefault <- loan_data[loan_data$loan_status %in% status_keep,]
 # Generate loan status variable where 1 = undesirable loan and 0 = fully paid, and verify proper variable creation
 loan_data_paidORdefault <- loan_data_paidORdefault %>% mutate(status_bin = factor(ifelse(loan_data_paidORdefault$loan_status == "Charged Off" | loan_data_paidORdefault$loan_status == "Default" | loan_data_paidORdefault$loan_status == "Late (31-120 days)", 1 , 0)))
 table(loan_data_paidORdefault$loan_status, loan_data_paidORdefault$status_bin)
+
+# Generate return on investment for each loan
+loan_data_paidORdefault <- loan_data_paidORdefault %>% mutate(ROI = (total_pymnt - loan_amnt) * 100 / loan_amnt)
 
 # Exploratory Analyses
 
@@ -98,7 +101,8 @@ status_subgrade_graph <- ggplot(status_subgrade, aes(x = sub_grade, y = pct)) +
                       ggtitle("Default Rate by Borrower Loan Subgrade") +
                       theme(plot.title = element_text(hjust = 0.5)) +
                       xlab("Subgrade") +
-                      ylab("Default Rate") 
+                      ylab("Default Rate") +
+                      theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 7))
 status_subgrade_graph
 
 # Loan status by installment amount
@@ -112,9 +116,10 @@ status_installment_graph <- ggplot(status_installment, aes(x = installment_ordin
                           geom_bar(stat = "identity", fill = "#FF6666") +
                           ggtitle("Default Rate by Installment Amount") +
                           theme(plot.title = element_text(hjust = 0.5)) +
-                          xlab("Installment Amount") +
+                          xlab("Installment Amount, in dollars") +
                           scale_x_discrete(labels = c("(29,207]", "(207,384]" , "(384,561]", "(561,738]", "(738,915]", "(915,1009]", "(1009,1270]", "(1270,1450]")) +
-                          ylab("Default Rate") 
+                          ylab("Default Rate") +
+                          theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))
 status_installment_graph
 
 # Generate cleaned data which includes only variables of interest
@@ -123,7 +128,8 @@ vars_interested <- c("term", "sub_grade", "emp_length", "home_ownership",
                      "annual_inc", "revol_bal", "revol_util", "total_acc", "dti", "delinq_2yrs",
                      "bankruptcy_bin", "taxliens_bin", "status_bin", "emp_length_num", "sub_grade_num",
                      "total_bc_limit", "total_bal_ex_mort", "num_accts_ever_120_pd",
-                     "bc_util", "chargeoff_within_12_mths", "inq_last_12m", "inq_last_6mths","tot_cur_bal","pub_rec")
+                     "bc_util", "chargeoff_within_12_mths", "inq_last_12m", "inq_last_6mths","tot_cur_bal",
+                     "pub_rec", "ROI", "total_pymnt", "loan_status")
 loan_data_vars_interested <- loan_data_paidORdefault %>% select(one_of(vars_interested))
 
 
