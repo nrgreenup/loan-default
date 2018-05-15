@@ -9,6 +9,7 @@ library(ggplot2)
 library(pROC)
 library(caret)
 library(car)
+library(randomForest)
 
 
 ### Import data 
@@ -102,6 +103,39 @@ png("graph-ROC_model4")
 plot(ROC4, col = "red", main = " Model 4 ROC Curve")
 dev.off()
 auc(ROC4)
+
+
+### Decision tree models
+# Default parameters
+vars_RF <- c("status_bin", "term", "sub_grade_num", "emp_length_num", 
+             "installment", "revol_util", "dti", "delinq_2yrs", "taxliens_bin", 
+             "home_ownership", "tot_cur_bal", "addr_state",
+             "num_accts_ever_120_pd", "application_type", "revol_util")
+train_RF <- select(train, one_of(vars_RF))
+train_RF <- na.omit(train_RF)
+test_RF <- select(test, one_of(vars_RF))
+test_RF <- na.omit(test_RF)
+
+RFdef <- randomForest(factor(status_bin) ~ . , data = train_RF)
+RFdef
+
+# Try various levels of mtry parameter
+acc=c()
+for (i in 2:8) {
+  RFmtry_i <- randomForest(factor(status_bin) ~ . , data = train_RF, mtry = i)
+  RFmtry_i_pred <- predict(RFmtry_i, test_RF, type = "class")
+  acc[i-1] = mean(RFmtry_i_pred == test_RF$status_bin)
+}
+
+acc <- as.data.frame(acc)
+print(acc)
+RF_acc <- ggplot(acc, aes(x= 2:8, y = acc)) + 
+          geom_point(col = "red") +
+          labs(title = "Accuracy of Random Forest Model by mtry Parameter Value",
+               x = "mtry Parameter Value",
+               y = "Model Accuracy") +
+          theme(plot.title = element_text(hjust = 0.5))
+RF_acc
 
 
 ### Evaluate ROI based on few important predictors
@@ -209,3 +243,9 @@ ROI_loanamnt_graph <- ggplot(ROI_LA_sample, aes(x = loan_amnt, y = ROI)) +
                               scale_colour_manual(name="Legend", values=c("blue", "red"))
 ROI_loanamnt_graph
 ggsave("graph-ROI_by_loanamnt.png")
+
+# Model ROI
+ROI_model <- lm(ROI ~ sub_grade_num + term + loan_amnt +
+                      dti + delinq_2yrs + taxliens_bin,
+                      data = loan_data_vars_interested)
+summary(ROI_model)
