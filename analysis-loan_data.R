@@ -10,7 +10,7 @@ library(pROC)
 library(caret)
 library(car)
 library(randomForest)
-
+library(margins)
 
 ### Import data 
 loan_clean <- read.csv("loan_data_cleaned.csv")
@@ -52,7 +52,7 @@ confusionMatrix(data = model2_test_pred, factor(test$status_bin))
 
 # Examine ROC and AUC of Model 2
 ROC2 <- roc(test$status_bin, model2_test_prob)
-png("graph-ROC_model2")
+png("graph-ROC_model2.png")
 plot(ROC2, col = "red", main = "Model 2 ROC Curve")
 dev.off()
 auc(ROC2)
@@ -78,7 +78,7 @@ confusionMatrix(data = model3_test_pred, factor(test$status_bin))
 
 # Examine ROC of Model 3
 ROC3 <- roc(test$status_bin, model3_test_prob)
-png("graph-ROC_model3")
+png("graph-ROC_model3.png")
 plot(ROC3, col = "red")
 dev.off()
 auc(ROC3)
@@ -99,13 +99,16 @@ confusionMatrix(data = model4_test_pred, factor(test$status_bin))
 
 # Examine ROC of Model 4
 ROC4 <- roc(test$status_bin, model4_test_prob)
-png("graph-ROC_model4")
+png("graph-ROC_model4.png")
 plot(ROC4, col = "red", main = " Model 4 ROC Curve")
 dev.off()
 auc(ROC4)
 
+# Examine marginal effects of Model 4
+margins4 <-margins(model4, type = "response")
+summary(margins4)
 
-### Decision tree models
+### Random forest models
 # Default parameters
 vars_RF <- c("status_bin", "term", "sub_grade_num", "emp_length_num", 
              "installment", "revol_util", "dti", "delinq_2yrs", "taxliens_bin", 
@@ -116,11 +119,13 @@ train_RF <- na.omit(train_RF)
 test_RF <- select(test, one_of(vars_RF))
 test_RF <- na.omit(test_RF)
 
+set.seed(1)
 RFdef <- randomForest(factor(status_bin) ~ . , data = train_RF)
 RFdef
 
 # Try various levels of mtry parameter
-acc=c()
+set.seed(28)
+acc <- c()
 for (i in 2:8) {
   RFmtry_i <- randomForest(factor(status_bin) ~ . , data = train_RF, mtry = i)
   RFmtry_i_pred <- predict(RFmtry_i, test_RF, type = "class")
@@ -128,7 +133,7 @@ for (i in 2:8) {
 }
 
 acc <- as.data.frame(acc)
-print(acc)
+print(as.list(acc))
 RF_acc <- ggplot(acc, aes(x= 2:8, y = acc)) + 
           geom_point(col = "red") +
           labs(title = "Accuracy of Random Forest Model by mtry Parameter Value",
@@ -136,11 +141,11 @@ RF_acc <- ggplot(acc, aes(x= 2:8, y = acc)) +
                y = "Model Accuracy") +
           theme(plot.title = element_text(hjust = 0.5))
 RF_acc
-
+ggsave("graph-RF_accuracy.png")
 
 ### Evaluate ROI based on few important predictors
 # Distribution of ROI
-png("graph-ROI_density")
+png("graph-ROI_density.png")
 plot(density(loan_data_vars_interested$ROI), main = "Kernel Density Plot of ROI")
 dev.off()
 
