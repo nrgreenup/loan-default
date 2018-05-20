@@ -7,7 +7,6 @@ library(dplyr)
 library(stringr)
 library(ggplot2)
 
-
 ### Import data 
 loan_data <- read.csv("loan_data_raw.csv")
 
@@ -139,9 +138,10 @@ vars_interested <- c("term", "sub_grade", "emp_length", "home_ownership",
                      "bankruptcy_bin", "taxliens_bin", "status_bin", "emp_length_num", "sub_grade_num",
                      "total_bc_limit", "total_bal_ex_mort", "num_accts_ever_120_pd",
                      "bc_util", "chargeoff_within_12_mths", "inq_last_12m", "inq_last_6mths","tot_cur_bal",
-                     "pub_rec", "ROI", "total_pymnt", "loan_status", "grade")
+                     "pub_rec", "ROI", "total_pymnt", "loan_status", "grade", "open_acc")
 loan_data_vars_interested <- loan_data_paidORdefault %>% select(one_of(vars_interested))
 
 
 ### Export cleaned data for analysis
 write.csv(loan_data_vars_interested, "loan_data_cleaned.csv", row.names = FALSE)
+

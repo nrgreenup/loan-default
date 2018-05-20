@@ -108,33 +108,45 @@ auc(ROC4)
 margins4 <-margins(model4, type = "response")
 summary(margins4)
 
-### Random forest models
-# Default parameters
-vars_RF <- c("status_bin", "term", "sub_grade_num", "emp_length_num", 
-             "installment", "revol_util", "dti", "delinq_2yrs", "taxliens_bin", 
-             "home_ownership", "tot_cur_bal", "addr_state",
-             "num_accts_ever_120_pd", "application_type", "revol_util")
-train_RF <- select(train, one_of(vars_RF))
-train_RF <- na.omit(train_RF)
-test_RF <- select(test, one_of(vars_RF))
-test_RF <- na.omit(test_RF)
+# Model 5: M4 with alternative cutpoint = 0.25
+model5_test_prob <- predict(model4, test, type = "response")
+model5_test_pred <- as.factor(ifelse(model4_test_prob > 0.25 , 1 , 0))
+confusionMatrix(data = model5_test_pred, factor(test$status_bin))
 
+
+### Random forest models
+# Setup
+loan_l10RF <- loan_clean[, ! colMeans(is.na(loan_clean) > 0.10)]
+extra_levels <- loan_l10RF %>% lapply(function(x){is.factor(x) == TRUE & nlevels(x) > 32})
+loan_dataRF <- loan_l10RF[, extra_levels == FALSE]
+
+nRF <- nrow(loan_dataRF)
+train_sizeRF <- round(0.75 * nRF)
+train_indicesRF <- sample(1:nRF, train_sizeRF)
+trainRF <- loan_dataRF[train_indicesRF,]
+testRF <- loan_dataRF[- train_indicesRF,]
+
+# Default parameters
 set.seed(1)
-RFdef <- randomForest(factor(status_bin) ~ . , data = train_RF)
+RFdef <- randomForest(factor(status_bin) ~ . - loan_status - ROI - total_pymnt, 
+                      data = trainRF,
+                      importance = TRUE)
 RFdef
 
 # Try various levels of mtry parameter
 set.seed(28)
 acc <- c()
-for (i in 2:8) {
-  RFmtry_i <- randomForest(factor(status_bin) ~ . , data = train_RF, mtry = i)
-  RFmtry_i_pred <- predict(RFmtry_i, test_RF, type = "class")
-  acc[i-1] = mean(RFmtry_i_pred == test_RF$status_bin)
+for (i in 2:6) {
+  RFmtry_i <- randomForest(factor(status_bin) ~ . - loan_status - ROI - total_pymnt, 
+                           data = trainRF,
+                           mtry = i)
+  RFmtry_i_pred <- predict(RFmtry_i, testRF, type = "class")
+  acc[i-1] = mean(RFmtry_i_pred == testRF$status_bin)
 }
 
 acc <- as.data.frame(acc)
 print(as.list(acc))
-RF_acc <- ggplot(acc, aes(x= 2:8, y = acc)) + 
+RF_acc <- ggplot(acc, aes(x= 2:6, y = acc)) + 
           geom_point(col = "red") +
           labs(title = "Accuracy of Random Forest Model by mtry Parameter Value",
                x = "mtry Parameter Value",
@@ -143,10 +155,21 @@ RF_acc <- ggplot(acc, aes(x= 2:8, y = acc)) +
 RF_acc
 ggsave("graph-RF_accuracy.png")
 
+# Preferred model
+set.seed(2)
+RF2 <- randomForest(factor(status_bin) ~ . - loan_status - ROI - total_pymnt, 
+                      data = trainRF,
+                      importance = TRUE,
+                      mtry = 2)
+impRF2 <- as.data.frame(importance(RF2))
+impRF2 <- cbind(var = row.names(impRF2), impRF2)
+impRF2 <- arrange(impRF2, desc(impRF2$MeanDecreaseAccuracy))
+head(impRF2, n = 10)
+
 ### Evaluate ROI based on few important predictors
 # Distribution of ROI
 png("graph-ROI_density.png")
-plot(density(loan_data_vars_interested$ROI), main = "Kernel Density Plot of ROI")
+plot(density(as.numeric(loan_data_vars_interested$ROI)), main = "Kernel Density Plot of ROI")
 dev.off()
 
 # By grade
